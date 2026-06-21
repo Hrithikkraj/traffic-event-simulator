@@ -1,5 +1,5 @@
-# ASTraM: Event-Driven Congestion Optimizer
 
+# ASTraM: Event-Driven Congestion Optimizer
 ASTraM is a Streamlit-based decision-support prototype for traffic incident response in Bengaluru. Instead of only predicting regular traffic flow, the project focuses on unplanned events: where they happen, when they peak, how severe they may become, and how limited field resources can be allocated.
 
 The dashboard is designed for operational users as well as reviewers. It explains the key insight, maps historical risk hotspots, and lets users simulate a new traffic incident to see a suggested deployment plan.
