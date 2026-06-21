@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 from pathlib import Path
 
-# --- Page Configuration ---
 st.set_page_config(
     page_title="ASTraM | Event-Driven Optimizer",
     page_icon="🚦",
@@ -11,12 +10,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Load Data for the Landing Page ---
+# --- DYNAMIC DATA EXTRACTION ---
 @st.cache_data
 def load_summary_data():
-    data_path = Path("data/processed/unplanned_events_scored.csv")
+    """Reads raw data dynamically so the dashboard works out-of-the-box."""
+    data_path = Path("data/raw/astram_data.csv")
     if data_path.exists():
-        return pd.read_csv(data_path)
+        df = pd.read_csv(data_path)
+        
+        # Filter to unplanned operational events
+        df = df[df['event_type'] == 'unplanned'].copy()
+        
+        # Dynamically extract the hour of the day
+        df['start_datetime'] = pd.to_datetime(df['start_datetime'], errors='coerce')
+        df['hour_of_day'] = df['start_datetime'].dt.hour
+        
+        # Clean up vehicle types for the chart
+        df['veh_type'] = df['veh_type'].fillna('Unknown').str.replace('_', ' ').str.title()
+        
+        return df
     return pd.DataFrame()
 
 # --- Main UI ---
@@ -46,8 +58,8 @@ if not df.empty:
         x='hour_of_day', 
         y='incident_count', 
         color='veh_type',
-        title="Unplanned Incidents by Hour & Vehicle Type (Notice the 2 AM Spike)",
-        labels={'hour_of_day': 'Hour of Day (24H)', 'incident_count': 'Number of Incidents', 'veh_type': 'Vehicle Type'},
+        title="Dynamic Incident Analysis: Unplanned Events by Hour & Vehicle Type",
+        labels={'hour_of_day': 'Hour of Day (24H)', 'incident_count': 'Total Incidents Logged', 'veh_type': 'Vehicle Type'},
         color_discrete_sequence=px.colors.qualitative.Bold
     )
     fig.update_layout(xaxis=dict(tickmode='linear', dtick=1))
@@ -55,6 +67,6 @@ if not df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 else:
-    st.warning("Processed data not found. Please run the data prep pipeline first.")
+    st.error("Raw data not found. Please ensure 'data/raw/astram_data.csv' exists in your project folder.")
 
 st.info("👈 **Use the sidebar to navigate to the Live Risk Map and the Event Simulator.**")

@@ -1,21 +1,54 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import random
 import pydeck as pdk
 import sys
 from pathlib import Path
 
-# Add project root to sys.path so we can import our custom module
+# Connect our ML Pipeline tools
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from src.optimization.resource_allocator import optimize_deployment
+from src.optimization.route_diversion import get_diversion_route
 
 st.set_page_config(page_title="Event Simulator", page_icon="🚨", layout="wide")
 
-st.title("🚨 Live Event Injection & Deployment Simulator")
-st.markdown("Inject a planned or unplanned event into the network. Watch the system dynamically calculate the Impact Score (EIS) and re-route finite police resources.")
+# --- PASTE YOUR MAPMYINDIA STATIC KEY HERE ---
+MAPMYINDIA_API_KEY = "qjcehglokmufbwcnxomavzejpkgmhleqeitu"
 
-# --- 1. Generate an "Active City State" (Background noise) ---
-# In a real app, this queries the live database. Here, we mock 5 active background events.
+st.title("🚨 Live Event Injection & Deployment Simulator")
+st.markdown("Inject a major event into the network. The ILP Solver will deploy finite resources, and the Mappls Engine will map alternative diversion routes.")
+
+# --- DYNAMIC DATA EXTRACTION ---
+@st.cache_data
+def load_dynamic_options():
+    """Reads the raw ASTraM dataset to extract all unique causes and corridor coordinates."""
+    # Read the dataset you uploaded
+    df = pd.read_csv("data/raw/astram_data.csv")
+    
+    # Clean text
+    df['event_cause'] = df['event_cause'].str.lower().str.strip()
+    
+    # 1. Get all unique causes
+    causes = df['event_cause'].dropna().unique().tolist()
+    
+    # 2. Get all unique corridors and their approximate center points
+    # We group by corridor and take the median lat/lon to find the center of that road
+    corridor_data = df.groupby('corridor').agg({
+        'latitude': 'median',
+        'longitude': 'median'
+    }).reset_index()
+    
+    # Drop any corridors that have missing coordinates
+    corridor_data = corridor_data.dropna(subset=['corridor', 'latitude', 'longitude'])
+    
+    return sorted(causes), corridor_data
+
+# Load the dynamic data
+all_causes, corridor_df = load_dynamic_options()
+all_corridors = sorted(corridor_df['corridor'].tolist())
+
+# --- BACKGROUND CITY STATE ---
 @st.cache_data
 def get_background_events():
     return pd.DataFrame({
@@ -30,87 +63,106 @@ def get_background_events():
 
 city_state_df = get_background_events()
 
-# --- 2. The Input Form ---
+# --- SIMULATOR UI ---
 with st.sidebar.form("simulator_form"):
     st.header("Inject New Event")
-    sim_cause = st.selectbox("Event Cause", ["public_event / VIP", "protest", "heavy_vehicle_breakdown", "construction"])
-    sim_location = st.selectbox("Corridor/Location", ["MG Road (Central)", "Tumkur Road (West)", "Hosur Road (South)"])
     
-    # Map locations to approximate coordinates
-    loc_coords = {
-        "MG Road (Central)": (12.9750, 77.6000),
-        "Tumkur Road (West)": (13.0450, 77.5200),
-        "Hosur Road (South)": (12.9250, 77.6200)
-    }
-    lat, lon = loc_coords[sim_location]
+    # Dynamic Dropdowns populated from your CSV
+    sim_cause = st.selectbox("Event Cause", all_causes)
+    sim_location = st.selectbox("Corridor/Location", all_corridors)
     
     submitted = st.form_submit_button("Simulate Impact & Deploy")
 
-# --- 3. Run the Simulation ---
 if submitted:
-    # Estimate EIS based on user inputs (Simulating the ML output)
-    sim_tier = 'Critical' if sim_cause in ["public_event / VIP", "protest"] else 'High'
-    sim_eis = random.uniform(85.0, 99.0) if sim_tier == 'Critical' else random.uniform(70.0, 84.0)
+    # Get the dynamic coordinates for the chosen corridor
+    selected_corridor_row = corridor_df[corridor_df['corridor'] == sim_location].iloc[0]
+    lat = selected_corridor_row['latitude']
+    lon = selected_corridor_row['longitude']
+    
+    # Dynamically assign severity based on typical impact (Heuristics for the simulator)
+    critical_causes = ['protest', 'public_event', 'vip_movement', 'procession', 'tree_fall', 'water_logging']
+    high_causes = ['accident', 'heavy_vehicle', 'bmtc_bus', 'fire']
+    
+    if any(c in sim_cause for c in critical_causes):
+        sim_tier = 'Critical'
+        sim_eis = random.uniform(85.0, 99.0)
+    elif any(c in sim_cause for c in high_causes):
+        sim_tier = 'High'
+        sim_eis = random.uniform(70.0, 84.0)
+    else:
+        sim_tier = 'Medium'
+        sim_eis = random.uniform(40.0, 69.0)
     
     new_event = pd.DataFrame([{
-        'id': 'SIM_1',
-        'event_cause': sim_cause,
-        'latitude': lat,
-        'longitude': lon,
-        'eis_normalized': sim_eis,
-        'eis_tier': sim_tier,
-        'is_simulated': True
+        'id': 'SIM_1', 'event_cause': sim_cause, 'latitude': lat, 'longitude': lon,
+        'eis_normalized': sim_eis, 'eis_tier': sim_tier, 'is_simulated': True
     }])
     
-    # Combine background noise with the new simulated event
     current_events_df = pd.concat([city_state_df, new_event], ignore_index=True)
+    st.success(f"**Event Injected at {sim_location}!** Calculated Event Impact Score: **{sim_eis:.1f} ({sim_tier})**")
     
-    st.success(f"**Event Injected!** Calculated Event Impact Score: **{sim_eis:.1f} ({sim_tier})**")
-    
-    # --- 4. RUN THE OPTIMIZER ---
-    # We strictly limit the city to 20 officers. 
-    # The solver will be forced to choose who gets them.
+    # Run the ILP Optimizer
     optimized_df = optimize_deployment(current_events_df, total_officers=20, total_barricades=30)
+    
+    # Calculate a Mappls Diversion Route (Routing traffic AWAY from the injected event towards a safe hub)
+    SAFE_HUB_LAT, SAFE_HUB_LON = 12.9781, 77.5695 
+    route_coords, duration, distance = get_diversion_route(lat, lon, SAFE_HUB_LAT, SAFE_HUB_LON)
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
         st.subheader("City-Wide Optimization Plan")
-        st.markdown("*Note: With only 20 officers available, the ILP solver prioritizes the highest EIS events.*")
+        st.markdown("*Note: The ILP solver legally steals officers from lower-tier events to cover Critical injections.*")
         
-        # Highlight the simulated row in the table
         def highlight_sim(row):
-            # Look up the 'is_simulated' flag from the original full dataframe using the row index
             is_sim = optimized_df.loc[row.name, 'is_simulated']
             return ['background-color: #ff4b4b; color: white'] * len(row) if is_sim else [''] * len(row)
             
         display_cols = ['event_cause', 'eis_tier', 'eis_normalized', 'assigned_officers', 'assigned_barricades']
         st.dataframe(optimized_df[display_cols].style.apply(highlight_sim, axis=1), use_container_width=True)
+        
+        if route_coords:
+            st.info(f"**Suggested Diversion Route Generated by Mappls:** {distance:.1f} km detour (Est. {duration:.1f} mins to bypass).")
 
     with col2:
         st.subheader("Live Map")
+        layers_to_render = []
         
-        # 1. Calculate the color inside Pandas based on the simulation flag
-        optimized_df['map_color'] = optimized_df['is_simulated'].apply(
-            lambda x: [200, 30, 0, 160] if x else [0, 150, 200, 160]
-        )
+        # 1. Mappls Base Map
+        MAPPLES_TILE_URL = f"https://apis.mappls.com/advancedmaps/v1/{MAPMYINDIA_API_KEY}/retina_map/{{z}}/{{x}}/{{y}}.png"
+        layers_to_render.append(pdk.Layer(
+            "TileLayer", data=MAPPLES_TILE_URL, min_zoom=0, max_zoom=19
+        ))
         
-        # 2. Pass the new 'map_color' column to Pydeck (and use get_fill_color)
-        layer = pdk.Layer(
+        # 2. Diversion Path Layer (If Mappls found a route)
+        if route_coords:
+            route_data = pd.DataFrame([{"path": route_coords}])
+            layers_to_render.append(pdk.Layer(
+                "PathLayer",
+                route_data,
+                get_path="path",
+                get_color=[255, 200, 0, 200], # Bright Yellow Diversion Line
+                width_scale=20,
+                width_min_pixels=5
+            ))
+        
+        # 3. Incident Dots
+        optimized_df['map_color'] = optimized_df['is_simulated'].apply(lambda x: [200, 30, 0, 160] if x else [0, 150, 200, 160])
+        layers_to_render.append(pdk.Layer(
             "ScatterplotLayer",
             optimized_df,
             get_position='[longitude, latitude]',
             get_fill_color="map_color", 
             get_radius="eis_normalized * 10",
             pickable=True
-        )
+        ))
         
-        view_state = pdk.ViewState(latitude=12.9716, longitude=77.5946, zoom=10.5)
+        view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=11.5)
         st.pydeck_chart(pdk.Deck(
-            layers=[layer], 
+            map_style=None, 
+            layers=layers_to_render, 
             initial_view_state=view_state, 
             tooltip={"text": "{event_cause}\nOfficers: {assigned_officers}"}
         ))
-
 else:
     st.info("Use the sidebar to inject a new event into the city network.")
