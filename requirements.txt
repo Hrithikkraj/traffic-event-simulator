@@ -1,0 +1,18 @@
+# Core
+numpy
+pandas
+scipy
+scikit-learn
+# Gradient boosting (LightGBM/XGBoost need libomp: `brew install libomp` on macOS)
+lightgbm
+xgboost
+catboost
+# Encoding, imbalance, tuning, interpretability
+category_encoders
+imbalanced-learn
+optuna
+shap
+# Viz / IO
+matplotlib
+seaborn
+joblib

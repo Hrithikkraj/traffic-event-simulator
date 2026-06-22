@@ -1,0 +1,19 @@
+# Generated artifacts (reproducible via `bash run.sh src/run_all.py`)
+outputs/
+catboost_info/
+
+# Local Claude Code / tooling settings
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
