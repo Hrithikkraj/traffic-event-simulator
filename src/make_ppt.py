@@ -26,6 +26,9 @@ RED  = RGBColor(0xFF, 0x5A, 0x5F)
 FIG = C.FIG_DIR / "ppt"
 FONT = "Calibri"
 
+TEAM_NAME = "Team TrafficSolvers — IIIT Delhi"
+TEAM_MEMBERS = "Ryan Bhan (Lead) · Kanan Mittal · Aditya Rawat · Hrithik Raj"
+
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
 W, H = prs.slide_width, prs.slide_height
@@ -106,10 +109,12 @@ text(s, Inches(0.95), Inches(3.35), Inches(11.6), Inches(0.7),
      [[("Event-Driven Congestion Intelligence for Bengaluru Traffic", 24, YEL, True)]])
 text(s, Inches(0.95), Inches(4.2), Inches(11.6), Inches(0.6),
      [[("Forecast  →  Quantify Impact  →  Prescribe Deployment  →  Learn", 18, TXT, False)]])
-rect(s, Inches(0.95), Inches(5.5), Inches(4.2), Pt(2), LINE)
-text(s, Inches(0.95), Inches(5.75), Inches(11.5), Inches(0.9),
-     [[("Flipkart Gridlock Hackathon 2.0 · Round 2", 15, TXT, True)],
-      [("Built on the anonymized ASTraM incident dataset — 8,173 events × 46 fields", 12.5, MUT, False)]])
+rect(s, Inches(0.95), Inches(5.2), Inches(4.2), Pt(2), LINE)
+text(s, Inches(0.95), Inches(5.4), Inches(11.8), Inches(1.7),
+     [[(TEAM_NAME, 16, YEL, True)],
+      [(TEAM_MEMBERS, 13, TXT, False)],
+      [("Flipkart Gridlock Hackathon 2.0 · Round 2", 12.5, MUT, False)],
+      [("Built on the anonymized ASTraM incident dataset — 8,173 events × 46 fields", 11.5, MUT, False)]])
 
 # =========================================================== 2 PROBLEM
 s = slide(); header(s, "THE OPERATIONAL CHALLENGE", "Events break the city — and we react blind")
@@ -333,10 +338,12 @@ text(s, Inches(0.9), Inches(2.3), Inches(11.6), Inches(1.2), [[("From reaction t
 text(s, Inches(0.95), Inches(3.7), Inches(11.6), Inches(1.3),
      [[("Forecast the event · quantify the impact · deploy the optimal response · "
         "learn from every outcome.", 18, YEL, False)]])
-rect(s, Inches(0.95), Inches(5.5), Inches(4.2), Pt(2), LINE)
-text(s, Inches(0.95), Inches(5.75), Inches(11.5), Inches(0.9),
-     [[("GRIDLOCK — Event-Driven Congestion Intelligence", 16, TXT, True)],
-      [("Flipkart Gridlock Hackathon 2.0 · Round 2", 13, MUT, False)]])
+rect(s, Inches(0.95), Inches(5.4), Inches(4.2), Pt(2), LINE)
+text(s, Inches(0.95), Inches(5.6), Inches(11.6), Inches(1.5),
+     [[(TEAM_NAME, 17, TXT, True)],
+      [(TEAM_MEMBERS, 13.5, YEL, False)],
+      [("GRIDLOCK — Event-Driven Congestion Intelligence  ·  Flipkart Gridlock Hackathon 2.0 · Round 2",
+        12.5, MUT, False)]])
 
 out = C.ROOT / "Gridlock_Pitch_Deck.pptx"
 prs.save(str(out))
