@@ -9,8 +9,12 @@ warnings.filterwarnings("ignore")
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import shap
 import lightgbm as lgb
+try:                          # optional: SHAP figures are nice-to-have, not required
+    import shap
+    HAS_SHAP = True
+except Exception:
+    HAS_SHAP = False
 
 import config as C
 import cv_utils as U
@@ -42,26 +46,29 @@ def bar(series, title, path, color):
 def main():
     df = pd.read_pickle(C.PROCESSED)
 
-    # ---- SHAP: closure drivers
-    print("=== SHAP — top drivers of ROAD-CLOSURE prediction ===")
-    y = df["y_closure"].astype(int)
-    spw = (1 - y.mean()) / y.mean()
-    cl = U.pipe(lgb.LGBMClassifier(scale_pos_weight=spw, n_estimators=600, learning_rate=0.03,
-                                   num_leaves=48, n_jobs=-1, random_state=C.SEED, verbose=-1))
-    cl.fit(df[C.ALL_FEATS], y)
-    imp_c = shap_importance(cl, df[C.ALL_FEATS])
-    print(imp_c.round(4).to_string())
-    bar(imp_c, "Road-closure: top SHAP drivers", C.FIG_DIR / "shap_closure.png", "#c0392b")
+    if not HAS_SHAP:
+        print("=== SHAP unavailable in this env — skipping SHAP figures (non-essential) ===")
+    else:
+        # ---- SHAP: closure drivers
+        print("=== SHAP — top drivers of ROAD-CLOSURE prediction ===")
+        y = df["y_closure"].astype(int)
+        spw = (1 - y.mean()) / y.mean()
+        cl = U.pipe(lgb.LGBMClassifier(scale_pos_weight=spw, n_estimators=600, learning_rate=0.03,
+                                       num_leaves=48, n_jobs=-1, random_state=C.SEED, verbose=-1))
+        cl.fit(df[C.ALL_FEATS], y)
+        imp_c = shap_importance(cl, df[C.ALL_FEATS])
+        print(imp_c.round(4).to_string())
+        bar(imp_c, "Road-closure: top SHAP drivers", C.FIG_DIR / "shap_closure.png", "#c0392b")
 
-    # ---- SHAP: clearance drivers
-    print("\n=== SHAP — top drivers of CLEARANCE-TIME prediction ===")
-    lab = df["is_clear_label"] == 1
-    rg = U.pipe(lgb.LGBMRegressor(n_estimators=600, learning_rate=0.03, num_leaves=48,
-                                  n_jobs=-1, random_state=C.SEED, verbose=-1))
-    rg.fit(df.loc[lab, C.ALL_FEATS], df.loc[lab, "y_clear_log"])
-    imp_r = shap_importance(rg, df.loc[lab, C.ALL_FEATS])
-    print(imp_r.round(4).to_string())
-    bar(imp_r, "Clearance-time: top SHAP drivers", C.FIG_DIR / "shap_clearance.png", "#2980b9")
+        # ---- SHAP: clearance drivers
+        print("\n=== SHAP — top drivers of CLEARANCE-TIME prediction ===")
+        lab = df["is_clear_label"] == 1
+        rg = U.pipe(lgb.LGBMRegressor(n_estimators=600, learning_rate=0.03, num_leaves=48,
+                                      n_jobs=-1, random_state=C.SEED, verbose=-1))
+        rg.fit(df.loc[lab, C.ALL_FEATS], df.loc[lab, "y_clear_log"])
+        imp_r = shap_importance(rg, df.loc[lab, C.ALL_FEATS])
+        print(imp_r.round(4).to_string())
+        bar(imp_r, "Clearance-time: top SHAP drivers", C.FIG_DIR / "shap_clearance.png", "#2980b9")
 
     # ---- EIS distribution figure
     if (C.DATA_DIR / "scored.pkl").exists():

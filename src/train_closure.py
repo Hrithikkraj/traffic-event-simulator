@@ -13,9 +13,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import average_precision_score, brier_score_loss
-from imblearn.pipeline import Pipeline as ImbPipeline
-from imblearn.over_sampling import SMOTE
 import lightgbm as lgb
+try:                                   # optional: skip SMOTE variant if imblearn
+    from imblearn.pipeline import Pipeline as ImbPipeline   # is absent/incompatible
+    from imblearn.over_sampling import SMOTE                # (it never wins anyway)
+    HAS_IMBLEARN = True
+except Exception:
+    HAS_IMBLEARN = False
 
 import config as C
 import cv_utils as U
@@ -37,13 +41,16 @@ def main():
     models = U.get_classifiers(scale_pos_weight=spw)
 
     # extra technique: SMOTE + LightGBM (resample minority inside CV folds)
-    models["LGBM+SMOTE"] = ImbPipeline([
-        ("prep", U.build_preprocessor(scale=False)),
-        ("smote", SMOTE(random_state=C.SEED, k_neighbors=5)),
-        ("model", lgb.LGBMClassifier(n_estimators=600, learning_rate=0.03, num_leaves=48,
-                                     subsample=0.8, colsample_bytree=0.8, n_jobs=-1,
-                                     random_state=C.SEED, verbose=-1)),
-    ])
+    if HAS_IMBLEARN:
+        models["LGBM+SMOTE"] = ImbPipeline([
+            ("prep", U.build_preprocessor(scale=False)),
+            ("smote", SMOTE(random_state=C.SEED, k_neighbors=5)),
+            ("model", lgb.LGBMClassifier(n_estimators=600, learning_rate=0.03, num_leaves=48,
+                                         subsample=0.8, colsample_bytree=0.8, n_jobs=-1,
+                                         random_state=C.SEED, verbose=-1)),
+        ])
+    else:
+        print("  (imblearn unavailable — skipping SMOTE variant)")
 
     table, oof = U.kfold_classification(models, X, y)
 

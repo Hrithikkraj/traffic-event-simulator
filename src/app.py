@@ -126,7 +126,7 @@ with t2:
     if etype != "all":
         d = d[d["event_type"] == etype]
     d = d.dropna(subset=["latitude", "longitude"]).copy()
-    d["color"] = d["EIS_tier"].map(TIER_COLOR)
+    d["color"] = d["EIS_tier"].astype(str).map(TIER_COLOR)   # astype(str): EIS_tier is Categorical
 
     k = st.columns(4)
     k[0].metric("Events shown", f"{len(d):,}")
@@ -135,10 +135,15 @@ with t2:
     k[3].metric("Mean closure prob", f"{d['closure_prob'].mean()*100:.0f}%" if len(d) else "—")
 
     if len(d):
+        # pass only JSON-safe columns (pydeck can't serialize Categorical/Timestamp cols)
+        mapdf = d[["longitude", "latitude", "color", "event_cause", "corridor"]].copy()
+        mapdf["event_cause"] = mapdf["event_cause"].astype(str)
+        mapdf["corridor"] = mapdf["corridor"].astype(str)
+        mapdf["EIS"] = d["EIS"].round(0).astype(int).values
         st.pydeck_chart(pdk.Deck(
             map_style=None,
             initial_view_state=pdk.ViewState(latitude=12.97, longitude=77.59, zoom=10.2),
-            layers=[pdk.Layer("ScatterplotLayer", data=d,
+            layers=[pdk.Layer("ScatterplotLayer", data=mapdf,
                               get_position=["longitude", "latitude"],
                               get_fill_color="color", get_radius=120, opacity=0.6,
                               pickable=True)],

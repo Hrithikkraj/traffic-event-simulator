@@ -20,6 +20,8 @@ bash run_app.sh
 ```
 `run.sh` / `run_app.sh` set `DYLD_LIBRARY_PATH` so LightGBM/XGBoost find libomp on macOS.
 
+**Environment note:** train and serve with the **same** Python — model pickles aren't portable across major numpy/scikit-learn versions. `outputs/` is git-ignored, so just run `run_all.py` once in your env before launching the app. `imbalanced-learn`, `shap`, and `catboost` are **optional** (the pipeline skips any that are absent/incompatible with your scikit-learn).
+
 ## What's inside
 | Layer | Module | Highlights |
 |-------|--------|-----------|
