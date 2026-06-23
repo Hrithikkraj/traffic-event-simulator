@@ -29,10 +29,12 @@ def load():
     hot = pd.read_csv(C.PRED_DIR / "hotspot_corridor_hour.csv")
     hawkes = joblib.load(C.MODEL_DIR / "hawkes_accident.pkl")
     art = joblib.load(C.MODEL_DIR / "eis_artifacts.pkl")
-    return df, hot, hawkes, art
+    pb = pd.read_csv(C.PRED_DIR / "learning_playbook.csv")
+    pb_cause = pd.read_csv(C.PRED_DIR / "learning_playbook_by_cause.csv")
+    return df, hot, hawkes, art, pb, pb_cause
 
 
-df, HOT, HAWKES, ART = load()
+df, HOT, HAWKES, ART, PB, PB_CAUSE = load()
 CORRIDORS = sorted([c for c in ART["corridor_centroid"].keys() if c not in ("unknown",)])
 CAUSES = ["vehicle_breakdown", "accident", "congestion", "tree_fall", "water_logging",
           "pot_holes", "construction", "public_event", "procession", "vip_movement",
@@ -44,8 +46,9 @@ DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 st.title("🚦 Gridlock — Event-Driven Congestion Intelligence")
 st.caption("Forecast → Quantify Impact → Prescribe deployment → Learn.  Bengaluru ASTraM data, 8,173 events.")
 
-t1, t2, t3, t4 = st.tabs(["🎯 Event Simulator", "🗺️ City Risk Map",
-                          "📅 Surge-Day Replay", "📈 Forecast & Hotspots"])
+t1, t2, t3, t4, t5 = st.tabs(["🎯 Event Simulator", "🗺️ City Risk Map",
+                              "📅 Surge-Day Replay", "📈 Forecast & Hotspots",
+                              "🔁 Learning Loop"])
 
 # ============================================================ Simulator
 with t1:
@@ -90,6 +93,27 @@ with t1:
         cc[1].metric("Diversion", "YES" if rec["diversion"] else "no")
         for a in rec["actions"]:
             st.markdown(f"- {a}")
+
+        if rec["diversion"]:
+            dv = P.diversion_route(corridor)
+            c0 = ART["corridor_centroid"].get(corridor, {"latitude": 12.97, "longitude": 77.59})
+            layers = [pdk.Layer("ScatterplotLayer",
+                                data=pd.DataFrame([{"lon": c0["longitude"], "lat": c0["latitude"]}]),
+                                get_position=["lon", "lat"], get_fill_color=[192, 57, 43],
+                                get_radius=250)]
+            if dv["route_coords"]:
+                layers.append(pdk.Layer("PathLayer",
+                                        data=pd.DataFrame([{"path": dv["route_coords"]}]),
+                                        get_path="path", get_color=[255, 200, 0],
+                                        width_min_pixels=5))
+                st.caption(f"🛣️ Live diversion → {dv['target']} · "
+                           f"{dv['distance_km']:.1f} km · {dv['duration_min']:.0f} min")
+            else:
+                st.caption(f"🛣️ Suggested diversion → {dv['target']} "
+                           "(live road route unavailable offline)")
+            st.pydeck_chart(pdk.Deck(map_style=None, layers=layers,
+                                     initial_view_state=pdk.ViewState(
+                                         latitude=c0["latitude"], longitude=c0["longitude"], zoom=12)))
 
 # ============================================================ Risk map
 with t2:
@@ -179,3 +203,36 @@ with t4:
         st.plotly_chart(px.line(x=byhour.index, y=byhour.values,
                                 labels={"x": "hour", "y": "events"}, title="Events by hour"),
                         use_container_width=True)
+
+# ============================================================ Learning loop
+with t5:
+    st.subheader("Post-event learning — predicted vs. actual, model-drift detection")
+    st.caption("After events close, the system compares leak-free out-of-fold predictions "
+               "with reality and flags cause/locations where the model is systematically off.")
+    drift = PB[PB["retrain_flag"] == 1]
+    k = st.columns(4)
+    k[0].metric("Playbook cells (cause × hex)", f"{len(PB):,}")
+    k[1].metric("Cells with ≥5 events", int((PB["n"] >= 5).sum()))
+    k[2].metric("Drift cells (retrain)", len(drift))
+    worst = PB_CAUSE.reindex(PB_CAUSE["model_bias_hrs"].abs().sort_values(ascending=False).index).iloc[0]
+    k[3].metric("Worst-calibrated cause", str(worst["event_cause"]),
+                delta=f"{worst['model_bias_hrs']:+.1f} h bias")
+
+    cc = st.columns([1, 1])
+    with cc[0]:
+        st.markdown("#### Model bias by cause (h, + = under-predicted)")
+        fig = px.bar(PB_CAUSE.sort_values("model_bias_hrs"),
+                     x="model_bias_hrs", y="event_cause", orientation="h",
+                     color="model_bias_hrs", color_continuous_scale="RdBu_r",
+                     labels={"model_bias_hrs": "actual − predicted (h)", "event_cause": ""})
+        st.plotly_chart(fig, use_container_width=True)
+    with cc[1]:
+        st.markdown("#### 🚨 Cells flagged for retraining")
+        if len(drift):
+            st.dataframe(drift[["event_cause", "corridor", "n", "historical_avg_hrs",
+                                "model_bias_hrs"]].round(2).reset_index(drop=True),
+                         use_container_width=True, height=320)
+        else:
+            st.success("No drift cells above threshold — model is well-calibrated.")
+    st.info("This closes the loop the brief calls out — *'no post-event learning system'* — "
+            "feeding drift back into the next retrain.")

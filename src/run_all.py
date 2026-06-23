@@ -5,7 +5,7 @@ Run: bash run.sh src/run_all.py          (full, includes Optuna ~8 min)
 """
 import sys
 import time
-import data_prep, train_clearance, train_closure, train_priority, impact_score, forecast, report
+import data_prep, train_clearance, train_closure, train_priority, impact_score, forecast, learn, report
 
 STAGES = [
     ("L0  Data prep & features", data_prep.main),
@@ -14,6 +14,7 @@ STAGES = [
     ("T3  Priority clf (honest)", train_priority.main),
     ("EIS Event Impact Score",   impact_score.main),
     ("L1  Forecast + hotspots + Hawkes", forecast.main),
+    ("L4  Learning loop (playbook + drift)", learn.main),
 ]
 if "--fast" not in sys.argv:
     import tune

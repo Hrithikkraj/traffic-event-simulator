@@ -16,3 +16,10 @@ shap
 matplotlib
 seaborn
 joblib
+# Geo, optimization, demo, routing
+h3
+pulp
+streamlit
+pydeck
+plotly
+requests

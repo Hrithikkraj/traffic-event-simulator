@@ -10,6 +10,7 @@ Solution documentation for the **Flipkart Gridlock Hackathon 2.0 — Round 2** p
 | [03 — Solution Architecture](03-solution-architecture.md) | The 4-layer system (Forecast → Impact → Prescribe → Learn) + Event Impact Score |
 | [04 — Build & Results](04-results.md) | The ML core: CV results, 20 techniques applied, leakage hunt, EIS validation |
 | [05 — Full System & Demo](05-system-and-demo.md) | L1 forecasting (Poisson/Hawkes), L3 prescriptive + ILP optimization, the Streamlit demo |
+| [06 — Branch Comparison & Merge](06-branch-comparison-and-merge.md) | `main` vs `kanan-dev`, and the L4 loop / H3 / routing merged in |
 
 **Code:** [src/](../src/) — build everything with `bash run.sh src/run_all.py`, then launch the dashboard with `bash run_app.sh`. Outputs land in `outputs/`.
 

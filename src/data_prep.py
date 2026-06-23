@@ -9,6 +9,7 @@ Run:  bash run.sh src/data_prep.py
 import re
 import numpy as np
 import pandas as pd
+import h3
 from sklearn.cluster import KMeans
 
 import config as C
@@ -114,6 +115,11 @@ def add_features(df):
     df["spatial_cluster"] = km.fit_predict(coords).astype(str)
     df["latitude"] = df["latitude"].fillna(med["latitude"])
     df["longitude"] = df["longitude"].fillna(med["longitude"])
+
+    # H3 hexagonal bin (res 8, ~0.7km edge) — fine-grained spatial unit for the
+    # learning playbook & hotspots (merged from the main-branch approach)
+    df["hex_id"] = [h3.latlng_to_cell(la, lo, 8) for la, lo in
+                    zip(df["latitude"], df["longitude"])]
 
     # Text features from description
     desc = df["description"].fillna("").astype(str)

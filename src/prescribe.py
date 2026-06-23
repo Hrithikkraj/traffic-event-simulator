@@ -55,6 +55,28 @@ def nearest_corridor(corridor):
     return None if best is None else f"{best} ({bestd:.1f} km)"
 
 
+def diversion_route(corridor):
+    """Resolve the diversion target corridor AND fetch a real road-network route
+    between the two corridor centroids. Falls back to {route: None} offline."""
+    cents = _art()["corridor_centroid"]
+    alt = nearest_corridor(corridor)
+    out = {"target": alt, "route_coords": None, "distance_km": None, "duration_min": None}
+    if not alt or corridor not in cents:
+        return out
+    alt_name = alt.split(" (")[0]
+    if alt_name not in cents:
+        return out
+    try:
+        from route_diversion import get_diversion_route
+        a, b = cents[corridor], cents[alt_name]
+        coords, mins, km = get_diversion_route(a["latitude"], a["longitude"],
+                                               b["latitude"], b["longitude"])
+        out.update(route_coords=coords, distance_km=km or None, duration_min=mins or None)
+    except Exception:
+        pass
+    return out
+
+
 def recommend(cause, corridor, eis, tier, closure_prob, duration_h, event_type="unplanned"):
     officers = TIER_BASE.get(tier, 1) + round(4 * closure_prob)
     if cause in PLANNED_CAUSES or event_type == "planned":
