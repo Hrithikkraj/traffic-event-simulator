@@ -33,10 +33,12 @@ bash run_app.sh
 | Inference | [src/inference.py](src/inference.py) | score any hypothetical event at creation time |
 | Demo | [src/app.py](src/app.py) | Streamlit + pydeck: simulator, risk map, surge-day replay, forecast |
 
-## Pitch deck
-`Gridlock_Pitch_Deck.pptx` (repo root) — 14-slide submission deck. Regenerate with:
+## Pitch deck & demo video
+- `Gridlock_Pitch_Deck.pptx` (repo root) — 14-slide submission deck.
+- `Gridlock_Demo.mp4` (repo root) — ~71s narrated, captioned guided tour of the live dashboard.
 ```bash
-python src/make_figures.py && python src/make_ppt.py
+python src/make_figures.py && python src/make_ppt.py        # rebuild the deck
+bash run_app.sh & python src/demo_shots.py && python src/make_demo.py   # rebuild the narrated demo
 ```
 
 ## Docs

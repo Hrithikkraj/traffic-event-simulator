@@ -17,3 +17,4 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+~$*        # Office temp/lock files (e.g. ~$Gridlock_Pitch_Deck.pptx)

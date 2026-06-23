@@ -26,8 +26,8 @@ RED  = RGBColor(0xFF, 0x5A, 0x5F)
 FIG = C.FIG_DIR / "ppt"
 FONT = "Calibri"
 
-TEAM_NAME = "Team TrafficSolvers — IIIT Delhi"
-TEAM_MEMBERS = "Ryan Bhan (Lead) · Kanan Mittal · Aditya Rawat · Hrithik Raj"
+TEAM_NAME = "Team TrafficSolvers"
+TEAM_MEMBERS = "Ryan Bhan (Lead, IIIT-D) · Kanan Mittal (IGDTUW) · Aditya Rawat (IIIT-D) · Hrithik Raj (IIIT-D)"
 
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
