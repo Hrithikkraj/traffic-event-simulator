@@ -1,0 +1,15 @@
+# Full pipeline + deck + demo-video tooling (superset of the app runtime).
+# Use this to rebuild models/figures/deck/video:  pip install -r requirements-dev.txt
+-r requirements.txt
+xgboost==3.0.5
+catboost            # optional in the zoo; pipeline skips if incompatible with sklearn
+optuna
+shap                # optional (SHAP figures); report skips if unavailable
+imbalanced-learn    # optional (SMOTE variant); train_closure skips if unavailable
+matplotlib
+seaborn
+h3==4.5.0
+python-pptx
+Pillow==12.2.0
+# Demo video only (also needs: python -m playwright install chromium):
+playwright

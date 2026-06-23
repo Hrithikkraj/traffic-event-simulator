@@ -10,9 +10,10 @@ A 4-layer decision-support system:
 ## Quickstart
 ```bash
 # 1. install deps (LightGBM/XGBoost need libomp: `brew install libomp` on macOS)
-pip install -r requirements.txt
+pip install -r requirements-dev.txt      # full pipeline + deck/video tooling
+                                         # (requirements.txt = lean app runtime, for deploy)
 
-# 2. build everything — models, Event Impact Score, forecasts (~10 min)
+# 2. build everything — models, Event Impact Score, forecasts (~14 min)
 bash run.sh src/run_all.py
 
 # 3. launch the dashboard
@@ -20,7 +21,9 @@ bash run_app.sh
 ```
 `run.sh` / `run_app.sh` set `DYLD_LIBRARY_PATH` so LightGBM/XGBoost find libomp on macOS.
 
-**Environment note:** train and serve with the **same** Python — model pickles aren't portable across major numpy/scikit-learn versions. `outputs/` is git-ignored, so just run `run_all.py` once in your env before launching the app. `imbalanced-learn`, `shap`, and `catboost` are **optional** (the pipeline skips any that are absent/incompatible with your scikit-learn).
+**Deploy:** see [SUBMISSION.md](SUBMISSION.md) — one-click Streamlit Community Cloud (uses the lean, pinned `requirements.txt`, `packages.txt`, and the committed model artifacts; pick **Python 3.12**).
+
+**Environment note:** train and serve with the **same** Python — model pickles aren't portable across major numpy/scikit-learn versions. `imbalanced-learn`, `shap`, and `catboost` are **optional** (the pipeline skips any that are absent/incompatible with your scikit-learn).
 
 ## What's inside
 | Layer | Module | Highlights |
